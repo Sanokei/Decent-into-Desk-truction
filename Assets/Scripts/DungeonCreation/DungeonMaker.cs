@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,7 +40,7 @@ public class DungeonMaker
     {
         this.RoomTypes = RoomType;
     }
-    
+
     public Dungeon MakeDungeon()
     {
         throw new System.NotImplementedException();
@@ -66,19 +67,38 @@ public class DungeonMaker
             
             // cast from Inumerable to List<PuzzlePieces>
             List<PuzzlePieces> list = (List<PuzzlePieces>) from room in DungeonPieces where room.RoomType == roomtype select room;
-            int rand = Random.Range(0,list.Count());
+            int rand = UnityEngine.Random.Range(0,list.Count());
             addedRooms.Add(list[rand]);
         }
         return AllDungeonRooms;
     }
+    int NearestSq(int n)
+    {
+        return (int) Math.Pow(Math.Round(Math.Sqrt(n)), 2);
+    }
 
+    int FindLargerNearestSq(int n)
+    {
+        int nearest = NearestSq(n);
+        while (nearest <= n)
+        {
+            n += 1;
+            nearest = NearestSq(n);
+        }
+        return nearest;
+    }
+    
     private Dungeon OrganizeDungeon(List<PuzzlePieces> AllDungeonRooms)
     {
         Dungeon dungeon = new Dungeon();
-
+        
         // my attempt at a psuedo wave function collapse algo
         
         // first add the first node which is the default
+        int nearest = FindLargerNearestSq(RoomTypes.Count());
+        PuzzlePieces[,] grid = new PuzzlePieces[nearest,nearest];
+        
+        
 
         return dungeon;
     }
