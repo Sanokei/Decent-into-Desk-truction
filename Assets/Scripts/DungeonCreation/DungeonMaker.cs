@@ -6,7 +6,7 @@ using System.Runtime.Serialization;
 
 using UnityEngine;
 
-public class DungeonMaker
+public class DungeonMaker : MonoBehaviour
 {
     // injected
     [SerializeField]
@@ -41,7 +41,7 @@ public class DungeonMaker
         this.RoomTypes = RoomType;
     }
 
-    public Dungeon MakeDungeon()
+    public Dungeon SpawnDungeon()
     {
         throw new System.NotImplementedException();
     }
@@ -87,20 +87,68 @@ public class DungeonMaker
         }
         return nearest;
     }
+
+    int FindLargerNearestOddSq(int n)
+    {
+        int nearest = FindLargerNearestSq(n);
+        return nearest % 2 == 0 ? FindLargerNearestOddSq(n+1) : nearest;
+    }
     
     private Dungeon OrganizeDungeon(List<PuzzlePieces> AllDungeonRooms)
     {
         Dungeon dungeon = new Dungeon();
-        
-        // my attempt at a psuedo wave function collapse algo
-        
-        // first add the first node which is the default
-        int nearest = FindLargerNearestSq(RoomTypes.Count());
-        PuzzlePieces[,] grid = new PuzzlePieces[nearest,nearest];
-        
-        
+
+        // Define room grid
+        int nearestSq = FindLargerNearestOddSq(RoomTypes.Count);
+
+        // Start by adding the first room at the center of the grid + bottom of the grid
+        dungeon[nearestSq / 2, 0] = DungeonPieces[0]; // set it to the hub room :flushed:
+
+        // Fill the rest of the grid by collapsing possible rooms
+        while (AllDungeonRooms.Count > 0)
+        {
+            // Select an empty cell
+            List<Vector2Int> emptyCells = Enumerable.Range(0, nearestSq)
+                .SelectMany(x => Enumerable.Range(0, nearestSq)
+                    .Where(y => dungeon[x, y] == null)
+                    .Select(y => new Vector2Int(x, y)))
+                .ToList();
+
+            if (emptyCells.Count == 0)
+            {
+                throw new ArgumentException("Dungeon grid is full, but there are still rooms to add.");
+            }
+
+            
+            Vector2Int cell = GetLeastEntropyCell(emptyCells, dungeon);
+            PuzzlePieces piece = CollapseRoom(cell, AllDungeonRooms, dungeon);
+
+            if (piece == null)
+            {
+                throw new ArgumentException("No room found that fits at cell " + cell);
+            }
+
+            dungeon[cell.x, cell.y] = piece;
+            AllDungeonRooms.Remove(piece);
+        }
 
         return dungeon;
+    }
+
+    private Vector2Int GetLeastEntropyCell(List<Vector2Int> emptyCells, Dungeon dungeon)
+    {
+        if (emptyCells == null || emptyCells.Count == 0)
+        {
+            throw new ArgumentException("The list of empty cells is null or empty.");
+        }
+
+        Vector2Int chosenCell = emptyCells[0];
+        
+        return chosenCell;
+    }
+    private PuzzlePieces CollapseRoom(Vector2Int cell, List<PuzzlePieces> allDungeonRooms, Dungeon dungeon)
+    {
+       throw new NotImplementedException();
     }
 }
 

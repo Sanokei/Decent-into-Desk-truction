@@ -4,6 +4,15 @@ using UnityEngine;
 
 public class Point
 {
-    public List<Vector2> Points;
-    [HideInInspector] public List<bool> Occupied;
+    public List<Vector3> Points;
+    public Direction Direction;
+    [HideInInspector] public bool[,] Occupied; 
+}
+
+public enum Direction
+{
+    North,
+    South,
+    West,
+    East
 }

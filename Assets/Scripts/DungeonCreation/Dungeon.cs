@@ -4,7 +4,8 @@ using UnityEngine;
 
 public class Dungeon
 {
-    private List<PuzzlePieces> DungeonPieces;
+    List<PuzzlePieces> DungeonPieces = new List<PuzzlePieces>();
+    PuzzlePieces[,] DungeonLayout;
 
     public PuzzlePieces this[int index]
     {
@@ -17,6 +18,18 @@ public class Dungeon
             DungeonPieces[index] = value;
         }
     }
+    
+    public PuzzlePieces this[int x, int y]
+    {
+        get
+        {
+            return DungeonLayout[x, y];
+        }
+        set
+        {
+            DungeonLayout[x, y] = value;
+        }
+    }
 
     public Dungeon Add(PuzzlePieces item)
     {
@@ -24,4 +37,3 @@ public class Dungeon
         return this;
     }
 }
-
