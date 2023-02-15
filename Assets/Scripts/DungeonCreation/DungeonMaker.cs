@@ -67,7 +67,7 @@ public class DungeonMaker : MonoBehaviour
             
             // cast from Inumerable to List<PuzzlePieces>
             List<PuzzlePieces> list = (List<PuzzlePieces>) from room in DungeonPieces where room.RoomType == roomtype select room;
-            int rand = UnityEngine.Random.Range(0,list.Count());
+            int rand = UnityEngine.Random.Range(0,list.Count()); // FIX ME
             addedRooms.Add(list[rand]);
         }
         return AllDungeonRooms;
@@ -96,10 +96,9 @@ public class DungeonMaker : MonoBehaviour
     
     private Dungeon OrganizeDungeon(List<PuzzlePieces> AllDungeonRooms)
     {
-        Dungeon dungeon = new Dungeon();
-
         // Define room grid
         int nearestSq = FindLargerNearestOddSq(RoomTypes.Count);
+        Dungeon dungeon = new Dungeon(nearestSq,nearestSq);
 
         // Start by adding the first room at the center of the grid + bottom of the grid
         dungeon[nearestSq / 2, 0] = DungeonPieces[0]; // set it to the hub room :flushed:
@@ -107,25 +106,12 @@ public class DungeonMaker : MonoBehaviour
         // Fill the rest of the grid by collapsing possible rooms
         while (AllDungeonRooms.Count > 0)
         {
-            // Select an empty cell
-            List<Vector2Int> emptyCells = Enumerable.Range(0, nearestSq)
-                .SelectMany(x => Enumerable.Range(0, nearestSq)
-                    .Where(y => dungeon[x, y] == null)
-                    .Select(y => new Vector2Int(x, y)))
-                .ToList();
-
-            if (emptyCells.Count == 0)
-            {
-                throw new ArgumentException("Dungeon grid is full, but there are still rooms to add.");
-            }
-
-            
-            Vector2Int cell = GetLeastEntropyCell(emptyCells, dungeon);
+            Vector2Int cell = GetLeastEntropyCell(dungeon);
             PuzzlePieces piece = CollapseRoom(cell, AllDungeonRooms, dungeon);
 
             if (piece == null)
             {
-                throw new ArgumentException("No room found that fits at cell " + cell);
+                Debug.LogError("No room found that fits at cell " + cell);
             }
 
             dungeon[cell.x, cell.y] = piece;
@@ -135,20 +121,54 @@ public class DungeonMaker : MonoBehaviour
         return dungeon;
     }
 
-    private Vector2Int GetLeastEntropyCell(List<Vector2Int> emptyCells, Dungeon dungeon)
+    private Vector2Int GetLeastEntropyCell(Dungeon dungeon)
     {
-        if (emptyCells == null || emptyCells.Count == 0)
+        Vector2Int chosenCell = new Vector2Int(0,0);
+        int[,] EntropyMap = new int[dungeon.DungeonLayout.GetLength(0),dungeon.DungeonLayout.GetLength(1)];
+
+        for(int row = 0; row < dungeon.DungeonLayout.GetLength(0); row++)
         {
-            throw new ArgumentException("The list of empty cells is null or empty.");
+            for(int col = 0; col < dungeon.DungeonLayout.GetLength(1); col++)
+            {
+                // If the Cell is not empty skip
+                if(dungeon[row,col] != null)
+                    continue;
+
+                // Get the length of the two array
+                int numRows = dungeon.DungeonLayout.GetLength(0);
+                int numCols = dungeon.DungeonLayout.GetLength(1);
+
+                // Get the directions
+                // FIXME: this is stupid. Just put it in if statments
+                PuzzlePieces top = row > 0 ? dungeon[row - 1, col] : new PuzzlePieces(false);
+                PuzzlePieces bottom = row < numRows - 1 ? dungeon[row + 1, col] : new PuzzlePieces(false);
+                PuzzlePieces left = col > 0 ? dungeon[row, col - 1] : new PuzzlePieces(false);
+                PuzzlePieces right = col < numCols - 1 ? dungeon[row, col + 1] : new PuzzlePieces(false);
+
+                // Check the directions and if the opposite is there then add one to entropy
+                if(top.valid && top.Directions.Contains(Direction.South) && !top.Occupied.Contains(Direction.South))
+                    EntropyMap[row,col]++;
+                if(bottom.valid && bottom.Directions.Contains(Direction.North) && !top.Occupied.Contains(Direction.North))
+                    EntropyMap[row,col]++;
+                if(left.valid && left.Directions.Contains(Direction.East) && !top.Occupied.Contains(Direction.East))
+                    EntropyMap[row,col]++;
+                if(right.valid && right.Directions.Contains(Direction.West) && !top.Occupied.Contains(Direction.West))
+                    EntropyMap[row,col]++;
+            }
         }
 
-        Vector2Int chosenCell = emptyCells[0];
-        
-        return chosenCell;
+        // Get the highest number of Entropy
+        var maxTuple = EntropyMap.Cast<int>()
+                    .Select((value, index) => (value, x: index % EntropyMap.GetLength(1), y: index / EntropyMap.GetLength(1)))
+                    .OrderByDescending(t => t.value)
+                    .First();
+
+        return new Vector2Int(maxTuple.x,maxTuple.y);
     }
+
     private PuzzlePieces CollapseRoom(Vector2Int cell, List<PuzzlePieces> allDungeonRooms, Dungeon dungeon)
     {
-       throw new NotImplementedException();
+        throw new System.Exception("");
     }
 }
 
