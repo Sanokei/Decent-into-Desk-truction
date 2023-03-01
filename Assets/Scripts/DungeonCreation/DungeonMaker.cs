@@ -6,7 +6,7 @@ using System.Runtime.Serialization;
 
 using UnityEngine;
 
-public class DungeonMaker : MonoBehaviour
+public class DungeonMaker
 {
     // injected
     [SerializeField]
@@ -26,28 +26,29 @@ public class DungeonMaker : MonoBehaviour
     //     }
     // }
 
-    public List<RoomType> RoomTypes = new List<RoomType>();
+    // public List<RoomType> RoomTypes = new List<RoomType>();
     
-    DungeonMaker(List<PuzzlePieces> DungeonPieces) // Default to add every piece
+    // No longer important cuz i made it monobehaviour
+        // DungeonMaker(List<PuzzlePieces> DungeonPieces) // Default to add every piece
+        // {
+        //     this.DungeonPieces = DungeonPieces;
+        // }
+        // /*
+        //     This is some lazy ass injection but it works for now, the best way to do this would be to use ZenJect or another a injection library.
+        //     wont do it for the game jam tho kek
+        // */
+        // public DungeonMaker(List<RoomType> RoomType) : this(new List<PuzzlePieces>(UnityEngine.Resources.LoadAll<PuzzlePieces>("Pieces/")))
+        // {
+        //     this.RoomTypes = RoomType;
+        // }
+
+    public Dungeon CreateDungeon(List<RoomType> RoomTypes)
     {
-        this.DungeonPieces = DungeonPieces;
-    }
-    /*
-        This is some lazy ass injection but it works for now, the best way to do this would be to use ZenJect or another a injection library.
-        wont do it for the game jam tho kek
-    */
-    public DungeonMaker(List<RoomType> RoomType) : this(new List<PuzzlePieces>(UnityEngine.Resources.LoadAll<PuzzlePieces>("Pieces/")))
-    {
-        this.RoomTypes = RoomType;
+        return OrganizeDungeon(GetDungeonRooms(RoomTypes), RoomTypes);
     }
 
-    public Dungeon SpawnDungeon()
-    {
-        throw new System.NotImplementedException();
-    }
-
-    // internal stuff
-    private List<PuzzlePieces> GetDungeonRooms()
+// internal stuff
+    private List<PuzzlePieces> GetDungeonRooms(List<RoomType> RoomTypes)
     {
         
         List<PuzzlePieces> AllDungeonRooms = new List<PuzzlePieces>();
@@ -94,7 +95,7 @@ public class DungeonMaker : MonoBehaviour
         return nearest % 2 == 0 ? FindLargerNearestOddSq(n+1) : nearest;
     }
     
-    private Dungeon OrganizeDungeon(List<PuzzlePieces> AllDungeonRooms)
+    private Dungeon OrganizeDungeon(List<PuzzlePieces> AllDungeonRooms, List<RoomType> RoomTypes)
     {
         // Define room grid
         int nearestSq = FindLargerNearestOddSq(RoomTypes.Count);
@@ -123,7 +124,6 @@ public class DungeonMaker : MonoBehaviour
 
     private Vector2Int GetLeastEntropyCell(Dungeon dungeon)
     {
-        Vector2Int chosenCell = new Vector2Int(0,0);
         int[,] EntropyMap = new int[dungeon.DungeonLayout.GetLength(0),dungeon.DungeonLayout.GetLength(1)];
 
         for(int row = 0; row < dungeon.DungeonLayout.GetLength(0); row++)
@@ -159,16 +159,46 @@ public class DungeonMaker : MonoBehaviour
 
         // Get the highest number of Entropy
         var maxTuple = EntropyMap.Cast<int>()
-                    .Select((value, index) => (value, x: index % EntropyMap.GetLength(1), y: index / EntropyMap.GetLength(1)))
-                    .OrderByDescending(t => t.value)
-                    .First();
+            .Select((value, index) => (value, x: index % EntropyMap.GetLength(1), y: index / EntropyMap.GetLength(1)))
+            .OrderByDescending(t => t.value)
+            .First();
 
         return new Vector2Int(maxTuple.x,maxTuple.y);
     }
 
     private PuzzlePieces CollapseRoom(Vector2Int cell, List<PuzzlePieces> allDungeonRooms, Dungeon dungeon)
     {
-        throw new System.Exception("");
+        // get the best room for the cell provided
+        int row = cell.x;
+        int col = cell.y;
+        int numRows = dungeon.DungeonLayout.GetLength(0);
+        int numCols = dungeon.DungeonLayout.GetLength(1);
+        int[,] EntropyMap = new int[numRows,numCols];
+
+        PuzzlePieces top = row > 0 ? dungeon[row - 1, col] : new PuzzlePieces(false);
+        PuzzlePieces bottom = row < numRows - 1 ? dungeon[row + 1, col] : new PuzzlePieces(false);
+        PuzzlePieces left = col > 0 ? dungeon[row, col - 1] : new PuzzlePieces(false);
+        PuzzlePieces right = col < numCols - 1 ? dungeon[row, col + 1] : new PuzzlePieces(false);
+
+        foreach(PuzzlePieces piece in allDungeonRooms)
+        {
+            // Check the directions and if the opposite is there then add one to entropy
+            if(top.valid && top.Directions.Contains(Direction.South) && !top.Occupied.Contains(Direction.South) && dungeon[row,col].Directions.Contains(Direction.North) && !dungeon[row,col].Occupied.Contains(Direction.North))
+                EntropyMap[row,col]++;
+            if(bottom.valid && bottom.Directions.Contains(Direction.North) && !top.Occupied.Contains(Direction.North) && dungeon[row,col].Directions.Contains(Direction.South) && !dungeon[row,col].Occupied.Contains(Direction.South))
+                EntropyMap[row,col]++;
+            if(left.valid && left.Directions.Contains(Direction.East) && !top.Occupied.Contains(Direction.East) && dungeon[row,col].Directions.Contains(Direction.West) && !dungeon[row,col].Occupied.Contains(Direction.West))
+                EntropyMap[row,col]++;
+            if(right.valid && right.Directions.Contains(Direction.West) && !top.Occupied.Contains(Direction.West) && dungeon[row,col].Directions.Contains(Direction.East) && !dungeon[row,col].Occupied.Contains(Direction.East))
+                EntropyMap[row,col]++;
+        }
+
+        var maxTuple = EntropyMap.Cast<int>()
+            .Select((value, index) => (value, x: index % EntropyMap.GetLength(1), y: index / EntropyMap.GetLength(1)))
+            .OrderByDescending(t => t.value)
+            .First();
+
+        return allDungeonRooms[maxTuple.x*maxTuple.y];
     }
 }
 
